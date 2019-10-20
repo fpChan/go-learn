@@ -1,7 +1,14 @@
 package mapreduce
 
 import (
+	"bufio"
+	"encoding/json"
+	"fmt"
 	"hash/fnv"
+	"io/ioutil"
+	"log"
+	"os"
+	"strings"
 )
 
 func doMap(
@@ -52,11 +59,92 @@ func doMap(
 	// Remember to close the file after you have written all the values!
 	//
 	// Your code here (Part I).
+	// 你需要重写这个函数。你可以通过reduceName获取文件名,使用map任务的输入为reduce任务提供输出。
+	// 下面给出的ihash函数应该被用于决定每个key属于的文件。
 	//
+	// map任务的中间输入以多文件的形式保存在文件系统上,它们的文件名说明是哪个map任务产生的,同时也说明哪个reduce任务会处理它们。
+	// 想出如何存储键/值对在磁盘上的方案可能会非常棘手,特别地, 当我们考虑到key和value都包含新行(newlines),引用(quotes),或者其他
+	// 你想到的字符。
+	//
+	// 有一种格式经常被用来序列化数据到字节流,然后可以通过字节流进行重建，这种格式是json。你没有被强制使用JSON,但是reduce任务的输出
+	// 必须是JSON格式,熟悉JSON数据格式会对你有所帮助。你可以使用下面的代码将数据结构以JSON字符串的形式输出。对应的解码函数在common_reduce.go
+	// 可以找到。
+	//
+	//   enc := json.NewEncoder(file)
+	//   for _, kv := ... {
+	//     err := enc.Encode(&kv)
+	//
+	//   记得关闭文件当你写完全部的数据之后。
+
+	// 注：Map的大致流程如下(官方教材建议不上传代码，所以去除)
+	//  S1: 　打开输入文件，并且读取全部数据
+	//  S2： 调用用户自定义的mapF函数,分检数据,在word count的案例中分割成单词
+	//  S3： 将mapF返回的数据根据key分类,跟文件名对应(reduceName获取文件名)
+	//  S4: 　将分类好的数据分别写入不同文件
+
+	//  S1： 打开输入文件
+	files, err := ioutil.ReadFile(inFile)
+	if err != nil {
+		log.Printf("read file: %s failed.", inFile)
+		return // 直接返回nil
+	}
+
+	//  S2： 调用用户自定义的mapF函数,分检数据,在word count的案例中分割成单词
+	// key: word, value: ""
+	kvs := mapF(inFile, string(files))
+
+	var tmpFile = make([]*os.File, nReduce) //记录中间文件
+	var encoder = make([]*json.Encoder, nReduce)
+	for i := 0; i < nReduce; i++ {
+		if f, err := os.Create(reduceName(jobName, mapTask, i)); err != nil {
+			log.Printf("create file %s failed", reduceName(jobName, mapTask, i))
+		} else {
+			tmpFile[i] = f //文件创建成功, 添加入对应文件
+			encoder[i] = json.NewEncoder(f)
+		}
+	}
+	for _, kv := range kvs {
+		r := ihash(kv.Key) % nReduce
+		if encoder[r] != nil {
+			if err := encoder[r].Encode(&kv); err != nil {
+				log.Printf("wirte %v to file %s failed", kv, reduceName(jobName, mapTask, r))
+			}
+		}
+	}
+
+	for i := 0; i < nReduce; i++ {
+		if tmpFile[i] != nil {
+			_ = tmpFile[i].Close()
+		}
+	}
+
+}
+
+// word counts from file
+func mapF(file string, contens string) map[string]int {
+	inputFile, inputError := os.Open(file)
+	if inputError != nil {
+		fmt.Println("open file error")
+		return nil
+	}
+	defer inputFile.Close()
+
+	retmap := make(map[string]int)
+
+	scanner := bufio.NewScanner(inputFile)
+
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+		words := strings.Fields(scanner.Text())
+		for _, word := range words {
+			retmap[word] += 1
+		}
+	}
+	return retmap
 }
 
 func ihash(s string) int {
 	h := fnv.New32a()
-	h.Write([]byte(s))
+	_, _ = h.Write([]byte(s))
 	return int(h.Sum32() & 0x7fffffff)
 }

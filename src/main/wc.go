@@ -1,9 +1,11 @@
 package main
 
 import (
+	"../mapreduce"
+	"bufio"
 	"fmt"
-	"mapreduce"
 	"os"
+	"strings"
 )
 
 //
@@ -14,6 +16,25 @@ import (
 // of key/value pairs.
 //
 func mapF(filename string, contents string) []mapreduce.KeyValue {
+	inputFile, inputError := os.Open(file)
+	if inputError != nil {
+		fmt.Println("open file error")
+		return nil
+	}
+	defer inputFile.Close()
+
+	retmap := make(map[string]int)
+
+	scanner := bufio.NewScanner(inputFile)
+
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+		words := strings.Fields(scanner.Text())
+		for _, word := range words {
+			retmap[word] += 1
+		}
+	}
+	return retmap
 	// Your code here (Part II).
 }
 

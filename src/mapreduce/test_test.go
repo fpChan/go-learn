@@ -24,7 +24,7 @@ const (
 
 // Split in words
 func MapFunc(file string, value string) (res []KeyValue) {
-	debug("Map %v\n", value)
+	_, _ = debug("Map %v\n", value)
 	words := strings.Fields(value)
 	for _, w := range words {
 		kv := KeyValue{w, ""}
@@ -36,7 +36,7 @@ func MapFunc(file string, value string) (res []KeyValue) {
 // Just return key
 func ReduceFunc(key string, values []string) string {
 	for _, e := range values {
-		debug("Reduce %s %v\n", key, e)
+		_, _ = debug("Reduce %s %v\n", key, e)
 	}
 	return ""
 }
@@ -107,10 +107,10 @@ func makeInputs(num int) []string {
 		}
 		w := bufio.NewWriter(file)
 		for i < (f+1)*(nNumber/num) {
-			fmt.Fprintf(w, "%d\n", i)
+			_, _ = fmt.Fprintf(w, "%d\n", i)
 			i++
 		}
-		w.Flush()
+		_ = w.Flush()
 		file.Close()
 	}
 	return names
@@ -122,7 +122,7 @@ func makeInputs(num int) []string {
 func port(suffix string) string {
 	s := "/var/tmp/824-"
 	s += strconv.Itoa(os.Getuid()) + "/"
-	os.Mkdir(s, 0777)
+	_ = os.Mkdir(s, 0777)
 	s += "mr"
 	s += strconv.Itoa(os.Getpid()) + "-"
 	s += suffix

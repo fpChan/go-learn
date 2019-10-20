@@ -33,6 +33,7 @@ type KeyValue struct {
 
 // reduceName constructs the name of the intermediate file which map task
 // <mapTask> produces for reduce task <reduceTask>.
+// 构造中间修改的文件名
 func reduceName(jobName string, mapTask int, reduceTask int) string {
 	return "mrtmp." + jobName + "-" + strconv.Itoa(mapTask) + "-" + strconv.Itoa(reduceTask)
 }

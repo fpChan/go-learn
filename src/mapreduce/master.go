@@ -60,9 +60,9 @@ func newMaster(master string) (mr *Master) {
 func Sequential(jobName string, files []string, nreduce int,
 	mapF func(string, string) []KeyValue,
 	reduceF func(string, []string) string,
-) (mr *Master) {
+) (mr *Master) { //定义了mapF，reduceF函数，并将其作为参数，函数入参, mapF切割每一份文件中的word
 	mr = newMaster("master")
-	go mr.run(jobName, files, nreduce, func(phase jobPhase) {
+	go mr.run(jobName, files, nreduce, func(phase jobPhase) { //依次调用了mapPhase，reducePhase
 		switch phase {
 		case mapPhase:
 			for i, f := range mr.files {
