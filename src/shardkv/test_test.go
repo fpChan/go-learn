@@ -1,6 +1,6 @@
 package shardkv
 
-import "linearizability"
+import "github.com/6.824/src/linearizability"
 
 import "testing"
 import "strconv"

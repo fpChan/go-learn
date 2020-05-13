@@ -1,0 +1,166 @@
+
+@startuml
+
+IStreamEngine <|.. MySqlEngine
+IStreamEngine <|.. PulsarEngine
+IStreamEngine <|.. RedisEngine
+note right of IStreamEngine : client to redis\n mysql pulsar.
+
+
+IStreamData <|.. DataAnalysis
+IStreamData <|.. PulsarData
+IStreamData <|.. RedisBlock
+
+StreamContext *-- StreamEngine
+StreamContext *-- StreamTaskWithData
+StreamEngine *-- StreamTask : distrLatestTask 最近的任务
+StreamEngine o-- StreamTask : resultChan 结果通道
+StreamEngine o-- IDistributeStateService : scheduler实现分布式锁的管理
+
+StreamEngine *-- Coordinator : coordinator  \n引擎管理\n 任务通道\n 结果通道
+StreamEngine o-- StreamTaskWithData:taskChan 任务通道
+
+StreamTaskWithData o-- IStreamData: 待执行的数据
+
+Coordinator o-- StreamTaskWithData
+Coordinator o-- IStreamEngine : engineMap 存放三个client
+Coordinator o-- StreamTask
+
+StreamTaskWithData *-- StreamTask
+
+IDistributeStateService <|.. RedisDistributeStateService
+note left of RedisDistributeStateService : redis pool
+
+class StreamContext {
+	blockHeight  int64
+	streamEngine *StreamEngine
+	taskData     *StreamTaskWithData
+}
+
+
+
+class StreamEngine {
+	orderKeeper    order.Keeper
+	tokenKeeper    token.Keeper
+	accountKeeper  auth.AccountKeeper
+	marketKeeper   backend.MarketKeeper
+	cdc            *codec.Codec
+	logger         log.Logger
+	engines        map[EngineKind]inter.IStreamEngine
+	Cache          *common.Cache
+	AnalysisEnable bool
+
+	// Fore. 20190809
+	scheduler       inter.IDistributeStateService
+	distrLatestTask *StreamTask
+	taskChan        chan StreamTaskWithData
+	resultChan      chan StreamTask
+	coordinator     *Coordinator
+	cacheQueue      *CacheQueue
+
+	metric *monitor.StreamMetrics
+}
+
+
+class Coordinator {
+	engineMap       map[EngineKind]inter.IStreamEngine
+	taskChan        chan StreamTaskWithData
+	resultChan      chan StreamTask
+	atomTaskTimeout int // In 30 Second
+	logger          log.Logger
+    {method} - prepareAtomTasks（）
+    {method} - run（）
+}
+
+
+class StreamTaskWithData {
+	^ StreamTask
+	dataMap map[StreamKind]inter.IStreamData
+}
+
+class StreamTask {
+	Height    int64
+	DoneMap   map[StreamKind]bool
+	UpdatedAt int64
+	{method} + GetStatus()
+}
+
+
+
+interface IDistributeStateService {
+	GetLockerId() string
+	GetDistState(stateKey string) (string, error)
+	SetDistState(stateKey string, stateValue string) error
+	FetchDistLock(lockKey string, locker string, expiredInMS int) (bool, error)
+	ReleaseDistLock(lockKey string, locker string) (bool, error)
+	UnlockDistLockWithState(lockKey string, locker string, stateKey string, stateValue string) (bool, error)
+}
+
+
+class RedisDistributeStateService {
+	pool     *redis.Pool
+	logger   log.Logger
+	lockerId string // unique identifier of locker
+}
+
+
+
+
+
+
+
+interface IStreamEngine {
+	Write(data IStreamData, success *bool)
+}
+class MySqlEngine {
+	logger log.Logger
+	orm    *backend.ORM
+	{method} + Write(data)
+}
+class PulsarEngine {
+	logger         log.Logger
+	pulsarProducer *pulsarclient.PulsarProducer
+	{method} + Write(data)
+}
+class RedisEngine {
+	logger log.Logger
+	srv    *pushservice.PushService
+	{method} + Write(data)
+}
+
+
+interface IStreamData {
+	BlockHeight() int64
+	DataType() StreamDataKind
+}
+
+class DataAnalysis  {
+	Height        int64
+	Deals         []*backend.Deal
+	FeeDetails    []*token.FeeDetail
+	NewOrders     []*backend.Order
+	UpdatedOrders []*backend.Order
+	Trans         []*backend.Transaction
+	MatchResults  []*backend.MatchResult
+	DepthBook     order.BookRes
+	AccStates     []token.AccountResponse
+	{method} + SetData(data)
+}
+class PulsarData {
+	Height       int64
+	matchResults []*backend.MatchResult
+	{method} + SetData(data)
+}
+
+class RedisBlock {
+	Height        int64
+	OrdersMap     map[string][]backend.Order  //key: address
+	DepthBooksMap map[string]BookRes          //key: product
+
+	AccountsMap map[string]token.CoinInfo   //key: instrument_id:<address>
+	Instruments map[string]struct{}             //P3K:spot:instruments
+	MatchesMap  map[string]backend.MatchResult  //key: product
+	{method} + SetData(data)
+}
+
+@enduml
