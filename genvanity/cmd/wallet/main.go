@@ -17,7 +17,7 @@ import (
 	"github.com/tyler-smith/go-bip39"
 )
 
-const MnemonicPath = `/Users/ping/Dev/mnemonic`
+const MnemonicPath = `~/Dev/mnemonic`
 
 func main() {
 	cpuFile, err := os.Create("cpu.profile")
