@@ -31,3 +31,10 @@ func execute(a data) {
 
 	}
 }
+
+func InterfaceAssert() {
+	var a = A{"a"}
+	execute(a)
+	var b = B{"b"}
+	execute(b)
+}
