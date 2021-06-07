@@ -3,3 +3,5 @@ api.key
 *-handin.tar.gz
 .idea
 .DS_Store
+thread_pool/src/nativehash
+thread_pool/src/poolhash

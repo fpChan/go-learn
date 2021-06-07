@@ -85,8 +85,6 @@ class StreamTask {
 	{method} + GetStatus()
 }
 
-
-
 interface IDistributeStateService {
 	GetLockerId() string
 	GetDistState(stateKey string) (string, error)
@@ -96,17 +94,11 @@ interface IDistributeStateService {
 	UnlockDistLockWithState(lockKey string, locker string, stateKey string, stateValue string) (bool, error)
 }
 
-
 class RedisDistributeStateService {
 	pool     *redis.Pool
 	logger   log.Logger
 	lockerId string // unique identifier of locker
 }
-
-
-
-
-
 
 
 interface IStreamEngine {
